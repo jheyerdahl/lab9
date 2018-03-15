@@ -1,0 +1,81 @@
+---
+title: "Lab9"
+author: "Justin Heyerdahl"
+date: "3/15/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Step 1. Load packages.
+```{r}
+library(tidyverse)
+library(cluster) #helps perform cluster analysis
+library(NbClust) #helps decide how many clusters to break data into
+library(factoextra) #visualize clusters
+library(tidytext) #text based version of sf for spatial data
+library(wordcloud) #makes a word cloud
+```
+
+##Step 2. Read in the files. 
+```{r}
+hate_crimes <- read_csv("hate_crimes.csv")
+hawking_df <- read_csv("hawking_df.csv")
+```
+
+##Step 3. Basic data wrangling.
+```{r}
+#Perform listwise deletion of any rows with NA values.
+crimes_df <- drop_na(hate_crimes)
+
+#Use column_to_rownames and tell R which column you want to make as a the new row names.
+crimes_df2 <- column_to_rownames(crimes_df, "state")
+
+#scale() is generic function whose default method centers and/or scales the columns of a numeric matrix.
+crimes_df2 <- scale(crimes_df2)
+```
+
+##Step 4. Calculate and Visualize Euclidean Distances
+```{r}
+#Use get_dist to get distances for your scaled data using the Euclidean method.
+euc_dist <- get_dist(crimes_df2, method = "euclidean")
+
+#Once you have Euclidean distances calculated, then you can use fviz_dist to visualize them.
+fviz_dist(euc_dist, gradient = list(low = "darkgreen", mid = "white", high = "red"))
+```
+
+##Step 5. k-means Partition Based Cluster Analysis
+```{r}
+#Use NbClust to determine a estimate for the best number of clusters to use given the data.
+crimes_no <- NbClust(crimes_df2, min.nc = 2, max.nc = 10, method = "kmeans")
+
+#Run kmeans based on Euclidean distance (default), specifying the number of clusters, and iteratively figure out what the most logical clusters are). 
+crimes_kmeans <- kmeans(crimes_df2, 3)
+
+#Visualize the clusters from crimes_df, assigning clusters based on what we found in crimes_kmeans.
+fviz_cluster(crimes_kmeans, data = crimes_df2)
+#Large squares in the middle of the clusters indicate the centroid. This clustering is based on PCA, which is how these programs are determining out of all 12 variables how to plot the clusters in just 2-dimensions. Note the percentages on each of the axes, which indicate how much of the variance is explained in the first two principal components. In this case, around 70% total (axis 1 + axis 2.)
+
+#You can experiment by changing the number of clusters you test for using kmeans(), and this will impact the number of clusters visualized with fviz_cluster(). Note that the amount of variance explained by the first to PCs doesn't change.
+
+#If you find that when you re-run for the same number of clusters and it turns out differently, try re-running your whole script again. This should re-set it and bring back the same result again. Unlike with bootstrapping, the centroids and cluster outputs shouldn't change when you're specifying the same number of clusters again.
+```
+
+##Step 6. Hierarchical Clustering
+```{r}
+#Make a new distance dataframe to keep your next steps clean from the prior ones.
+d <- dist(crimes_df2, method = "euclidean")
+#Agglomerative (bottom-up hierarchical clustering trees).
+
+#Use method = complete so we start with individuals and go all the way to the root.
+hc_crime <- agnes(d, method = "complete")
+#Hang makes a hanging line so your text is even horizontally.
+
+pltree(hc_crime, cex = 0.5, hang = -1)
+
+#The dendrogram below is just a sequence of binary splits, which produces leafs. The first major split is between D.C. and all the rest, which recall was the most separate state in terms of differences across the 12 variables.
+#Always look at the outcome and make sure it makes sense. For example, note that Washington and Oregon are closely matched, which makes sense since they are demographically similar states.
+```
+
