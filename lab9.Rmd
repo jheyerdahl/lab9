@@ -66,9 +66,11 @@ fviz_cluster(crimes_kmeans, data = crimes_df2)
 ##Step 6. Hierarchical Clustering
 ```{r}
 #Make a new distance dataframe to keep your next steps clean from the prior ones.
+#It appears that get_dist() and dist() do the same thing (note we used get_dist() above).
 d <- dist(crimes_df2, method = "euclidean")
-#Agglomerative (bottom-up hierarchical clustering trees).
 
+
+#Agglomerative (bottom-up hierarchical clustering trees).
 #Use method = complete so we start with individuals and go all the way to the root.
 hc_crime <- agnes(d, method = "complete")
 #Hang makes a hanging line so your text is even horizontally.
@@ -78,4 +80,5 @@ pltree(hc_crime, cex = 0.5, hang = -1)
 #The dendrogram below is just a sequence of binary splits, which produces leafs. The first major split is between D.C. and all the rest, which recall was the most separate state in terms of differences across the 12 variables.
 #Always look at the outcome and make sure it makes sense. For example, note that Washington and Oregon are closely matched, which makes sense since they are demographically similar states.
 ```
+
 
