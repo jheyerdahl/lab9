@@ -2,7 +2,9 @@
 title: "Lab9"
 author: "Justin Heyerdahl"
 date: "3/15/2018"
-output: html_document
+output:
+  word_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -81,4 +83,86 @@ pltree(hc_crime, cex = 0.5, hang = -1)
 #Always look at the outcome and make sure it makes sense. For example, note that Washington and Oregon are closely matched, which makes sense since they are demographically similar states.
 ```
 
+##Step 7. Get (rename hawking_df data). 
+We will be doing text analysis on text-based data from Twitter. What we are hoping to do is pull out words that describe people's sentiments about Stephen Hawking's death.
+```{r}
+#Make a copy of the original so you don't overwrite it.
+sh_df <- hawking_df
+
+sh_text <- sh_df %>%
+  #Select for only column "text"
+  select(text) %>%
+  #Unnest tokens, specify you want the unit "word" in the column "text". This separates out all the words from things like symbols, exclamation points, etc. This essentially removes any weird punctuation and pulls out the words themselves.
+  unnest_tokens(word, text) %>%
+  #Filter out some words that are super common and we aren't as interested in for this analysis.
+  #Look for words that don't match the following strings.
+  #Use the ! to tell tell R to retain the opposite of the command (i.e. remove the following words)
+  filter(!word %in% c("hawking", "stephen", "died", "t.co", "https", "stephenhawking" ,"steven", "death"))
+
+```
+
+##Step 8. Getting counts of words that show up based on the 10,000 tweets.
+```{r}
+
+counts <- sh_text %>%
+  #Remove any word that appears in that stop words collection.
+  anti_join(stop_words) %>%
+  #Remove anything with unique character strings in the word column
+  count(word, sort = TRUE)
+
+head(counts, 20)
+
+```
+
+##Step 9. Make a wordcloud.
+```{r}
+#Take the counts data we just created and with the wordcloud function, take everything that appears in the columns "word" and "n"
+counts(wordcloud(word, n, max.words = 100, colors = brewer.pal(8, "Spectral")))
+```
+
+
+##Step 10. Sentiment Analysis
+```{r}
+#get_sentiments("afinn" %>% head(20))
+#This is a score-based lexicon that ranks things based on very negative to very positive sentiments.
+
+get_sentiments("nrc" %>% head(20))
+#nrc lexicon assigns words to 6 or 7 categories of sentiments.
+```
+
+#Bind the sentiment words to the words that are in our dataset so R can find matches.
+```{r}
+sh_nrc <- sh_text %>% 
+  #Get sentiments from the nrc lexicon and join them by words in the "word" column... 
+  left_join(get_sentiments("nrc"), by = "word") %>%
+  #and get rid of anything that has an NA value (meaning no match). Use the !
+  filter(sentiment != "NA")
+```
+
+```{r}
+#Sort by the top words and sentiments associatd with them.
+counts_nrc <- sh_nrc %>%
+  count(word, sentiment, sort = TRUE)
+
+#Show me the first 20, aka the highest sentiments.
+head(counts_nrc, 20)
+```
+
+```{r}
+total_sentiment <- counts_nrc %>%
+  #Group by sentiment.
+  group_by(sentiment) %>%
+  #Tally by totals in n column.
+  summarise(totals = sum(n)) %>%
+  #Arrange from high to low based on what's in the totals column.
+  arrange(-totals)
+
+total_sentiment
+```
+
+Plot these!
+```{r}
+ggplot(total_sentiment) +
+  geom_col(aes(x = sentiment, y = totals))
+```
 
